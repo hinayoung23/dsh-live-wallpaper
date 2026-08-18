@@ -1,0 +1,56 @@
+{
+  "name": "dsh-live-wallpaper",
+  "version": "0.1.0",
+  "description": "A dependency-free dynamic wallpaper center for the DeepSeek Harness Web UI.",
+  "author": "hinayoung23",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.cjs",
+    "check": "node --check index.js && node --check client.js && node --test test/*.test.cjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "wallpaper",
+    "live-wallpaper",
+    "shadertoy"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hinayoung23/dsh-live-wallpaper.git"
+  },
+  "homepage": "https://github.com/hinayoung23/dsh-live-wallpaper#readme",
+  "bugs": {
+    "url": "https://github.com/hinayoung23/dsh-live-wallpaper/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}

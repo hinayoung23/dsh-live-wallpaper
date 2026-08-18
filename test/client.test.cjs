@@ -62,3 +62,42 @@ test('persisted state is bounded and stale local URLs fall back safely', () => {
   assert.equal(state.surface, 0.94)
   assert.equal(state.speed, 2)
 })
+
+test('theme settings accept presets and reject unsafe persisted values', () => {
+  const { normalizeState } = loadClientExports()
+  const preset = normalizeState({
+    themePreset: 'violet',
+    buttonStyle: 'pill',
+    fontStyle: 'mono',
+    fontScale: 1.1,
+  })
+  assert.equal(preset.themeColor, '#160c2e')
+  assert.equal(preset.accentColor, '#a78bfa')
+  assert.equal(preset.buttonColor, '#c084fc')
+  assert.equal(preset.buttonStyle, 'pill')
+  assert.equal(preset.fontStyle, 'mono')
+  assert.equal(preset.fontScale, 1.1)
+
+  const invalid = normalizeState({
+    themePreset: 'unknown',
+    themeColor: 'red; background: url(javascript:alert(1))',
+    accentColor: '#123',
+    buttonColor: 'transparent',
+    buttonStyle: 'floating',
+    fontStyle: 'remote-font',
+    fontScale: 4,
+  })
+  assert.equal(invalid.themePreset, 'ocean')
+  assert.equal(invalid.themeColor, '#071326')
+  assert.equal(invalid.accentColor, '#64e0c8')
+  assert.equal(invalid.buttonColor, '#5eead4')
+  assert.equal(invalid.buttonStyle, 'rounded')
+  assert.equal(invalid.fontStyle, 'system')
+  assert.equal(invalid.fontScale, 1.15)
+})
+
+test('button labels keep readable contrast against custom colors', () => {
+  const { contrastText } = loadClientExports()
+  assert.equal(contrastText('#f8fafc'), '#07111d')
+  assert.equal(contrastText('#111827'), '#ffffff')
+})

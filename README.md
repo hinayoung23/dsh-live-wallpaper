@@ -1,6 +1,6 @@
 # DSH Live Wallpaper
 
-为 DeepSeek Harness Web UI 提供动态壁纸中心。插件完全运行在浏览器侧，不依赖 Steam、Wallpaper Engine、API Key 或额外 npm 依赖。
+为 DeepSeek Harness Web UI 提供动态壁纸与页面主题中心。插件完全运行在浏览器侧，不依赖 Steam、Wallpaper Engine、API Key 或额外 npm 依赖。
 
 当前版本在 DeepSeek Harness `0.1.0-rc.7` 上完成验证。
 
@@ -11,6 +11,10 @@
 - 应用 HTTP(S) 视频、图片或网页 URL
 - 临时应用本地视频、GIF 和图片
 - 调整背景暗度、模糊、界面遮罩透明度和视频速度
+- 5 套页面主题预设，并可分别自定义主题底色、强调色和按钮颜色
+- 圆角、胶囊、直角、玻璃和 DSH 原生共 5 种按钮形态
+- 系统无衬线、圆体、衬线、等宽共 4 种字体风格，以及 90%–115% 字号缩放
+- 壁纸与主题可独立开关；关闭主题或卸载插件后自动恢复 DSH 原生外观
 - 页面隐藏、系统开启“减少动态效果”时自动暂停可暂停的动画
 - 除本地文件外，配置保存在浏览器 localStorage 中
 
@@ -27,7 +31,7 @@ dsh web
 ## 从 GitHub 安装
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.1.0
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.0
 ```
 
 ## 从 npm 安装

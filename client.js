@@ -8,6 +8,21 @@ window.__ModuleLoader__.load({
     const STORAGE_KEY = 'dsh-live-wallpaper:settings:v1'
     const PRESET_IDS = new Set(['aurora', 'nebula', 'sunset', 'grid'])
     const LOCAL_TYPES = new Set(['local-video', 'local-image'])
+    const BUTTON_STYLES = new Set(['native', 'rounded', 'pill', 'square', 'glass'])
+    const FONT_STYLES = new Set(['system', 'rounded', 'serif', 'mono'])
+    const THEME_PRESETS = Object.freeze({
+      ocean: Object.freeze({ base: '#071326', accent: '#64e0c8', button: '#5eead4' }),
+      violet: Object.freeze({ base: '#160c2e', accent: '#a78bfa', button: '#c084fc' }),
+      forest: Object.freeze({ base: '#071d18', accent: '#5ee0a0', button: '#4ade80' }),
+      sunset: Object.freeze({ base: '#2a1118', accent: '#fb7185', button: '#fb923c' }),
+      graphite: Object.freeze({ base: '#12151b', accent: '#8ea4c8', button: '#93c5fd' }),
+    })
+    const FONT_STACKS = Object.freeze({
+      system: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+      rounded: '"SF Pro Rounded", "Arial Rounded MT Bold", "Hiragino Sans GB", "PingFang SC", sans-serif',
+      serif: '"Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", Georgia, serif',
+      mono: '"SFMono-Regular", "JetBrains Mono", "Cascadia Code", "Roboto Mono", monospace',
+    })
     const DEFAULT_SOURCE = Object.freeze({ type: 'preset', id: 'aurora' })
     const DEFAULT_STATE = Object.freeze({
       enabled: true,
@@ -17,12 +32,43 @@ window.__ModuleLoader__.load({
       surface: 0.64,
       speed: 1,
       respectMotion: true,
+      themeEnabled: true,
+      themePreset: 'ocean',
+      themeColor: THEME_PRESETS.ocean.base,
+      accentColor: THEME_PRESETS.ocean.accent,
+      buttonColor: THEME_PRESETS.ocean.button,
+      buttonStyle: 'rounded',
+      fontStyle: 'system',
+      fontScale: 1,
     })
 
     function clamp(value, minimum, maximum, fallback) {
       const number = Number(value)
       if (!Number.isFinite(number)) return fallback
       return Math.min(maximum, Math.max(minimum, number))
+    }
+
+    function normalizeHex(value, fallback) {
+      if (typeof value !== 'string' || !/^#[\da-f]{6}$/i.test(value.trim())) return fallback
+      return value.trim().toLowerCase()
+    }
+
+    function hexToRgb(value) {
+      const hex = normalizeHex(value, '#000000').slice(1)
+      return [0, 2, 4].map(index => Number.parseInt(hex.slice(index, index + 2), 16))
+    }
+
+    function shadeHex(value, amount) {
+      const channels = hexToRgb(value).map(channel => Math.round(channel + (255 - channel) * amount))
+      return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`
+    }
+
+    function contrastText(value) {
+      const [red, green, blue] = hexToRgb(value).map(channel => {
+        const normalized = channel / 255
+        return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue > 0.42 ? '#07111d' : '#ffffff'
     }
 
     function parseRemoteUrl(input) {
@@ -71,6 +117,10 @@ window.__ModuleLoader__.load({
       const staleLocalSource = typeof input.source === 'object'
         && input.source !== null
         && LOCAL_TYPES.has(input.source.type)
+      const themePreset = Object.hasOwn(THEME_PRESETS, input.themePreset) || input.themePreset === 'custom'
+        ? input.themePreset
+        : DEFAULT_STATE.themePreset
+      const themeDefaults = THEME_PRESETS[themePreset] ?? THEME_PRESETS[DEFAULT_STATE.themePreset]
       return {
         enabled: staleLocalSource ? false : input.enabled === undefined ? DEFAULT_STATE.enabled : input.enabled === true,
         source: staleLocalSource ? { ...DEFAULT_SOURCE } : normalizeSource(input.source),
@@ -79,6 +129,14 @@ window.__ModuleLoader__.load({
         surface: clamp(input.surface, 0.45, 0.94, DEFAULT_STATE.surface),
         speed: clamp(input.speed, 0.25, 2, DEFAULT_STATE.speed),
         respectMotion: input.respectMotion === undefined ? DEFAULT_STATE.respectMotion : input.respectMotion === true,
+        themeEnabled: input.themeEnabled === undefined ? DEFAULT_STATE.themeEnabled : input.themeEnabled === true,
+        themePreset,
+        themeColor: normalizeHex(input.themeColor, themeDefaults.base),
+        accentColor: normalizeHex(input.accentColor, themeDefaults.accent),
+        buttonColor: normalizeHex(input.buttonColor, themeDefaults.button),
+        buttonStyle: BUTTON_STYLES.has(input.buttonStyle) ? input.buttonStyle : DEFAULT_STATE.buttonStyle,
+        fontStyle: FONT_STYLES.has(input.fontStyle) ? input.fontStyle : DEFAULT_STATE.fontStyle,
+        fontScale: clamp(input.fontScale, 0.9, 1.15, DEFAULT_STATE.fontScale),
       }
     }
 
@@ -103,25 +161,84 @@ window.__ModuleLoader__.load({
     }
 
     const GLOBAL_CSS = `
-      html { --dwp-surface: .64; }
-      body[data-dsh-wallpaper="active"] {
-        background: transparent !important;
-        --dsw-alias-bg-base: rgba(7, 12, 24, var(--dwp-surface)) !important;
-        --dsw-alias-bg-layer-1: rgba(11, 18, 34, var(--dwp-surface)) !important;
-        --dsw-alias-bg-layer-2: rgba(18, 27, 47, calc(var(--dwp-surface) + .04)) !important;
-        --dsw-alias-bg-module-platform: rgba(16, 24, 43, calc(var(--dwp-surface) + .02)) !important;
-        --dsw-alias-bg-overlay: rgba(10, 16, 30, .94) !important;
-        --dsw-specific-sidebar-fill: rgba(8, 14, 27, calc(var(--dwp-surface) + .04)) !important;
-        --dsw-specific-input-major: rgba(17, 25, 45, calc(var(--dwp-surface) + .22)) !important;
-        --dsw-alias-button-elevated-fill: rgba(20, 29, 50, calc(var(--dwp-surface) + .18)) !important;
-        --dsw-alias-button-floating-hover: rgba(36, 48, 73, calc(var(--dwp-surface) + .18)) !important;
+      html {
+        --dwp-surface: .64;
+        --dwp-theme-rgb: 7, 19, 38;
+        --dwp-theme-layer-1-rgb: 17, 31, 53;
+        --dwp-theme-layer-2-rgb: 29, 44, 69;
+        --dwp-accent: #64e0c8;
+        --dwp-button: #5eead4;
+        --dwp-button-hover: #76eddb;
+        --dwp-button-text: #07111d;
+        --dwp-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+        --dwp-font-scale: 1;
+      }
+      body:is([data-dsh-wallpaper="active"], [data-dsh-theme="active"]) {
+        --dwp-active-surface: 1;
+        background: rgb(var(--dwp-theme-rgb)) !important;
+        --dsw-alias-bg-base: rgba(var(--dwp-theme-rgb), var(--dwp-active-surface)) !important;
+        --dsw-alias-bg-layer-1: rgba(var(--dwp-theme-layer-1-rgb), var(--dwp-active-surface)) !important;
+        --dsw-alias-bg-layer-2: rgba(var(--dwp-theme-layer-2-rgb), calc(var(--dwp-active-surface) + .04)) !important;
+        --dsw-alias-bg-module-platform: rgba(var(--dwp-theme-layer-1-rgb), calc(var(--dwp-active-surface) + .02)) !important;
+        --dsw-alias-bg-overlay: rgba(var(--dwp-theme-rgb), .94) !important;
+        --dsw-specific-sidebar-fill: rgba(var(--dwp-theme-rgb), calc(var(--dwp-active-surface) + .04)) !important;
+        --dsw-specific-input-major: rgba(var(--dwp-theme-layer-1-rgb), calc(var(--dwp-active-surface) + .22)) !important;
+        --dsw-alias-button-elevated-fill: rgba(var(--dwp-theme-layer-2-rgb), calc(var(--dwp-active-surface) + .18)) !important;
+        --dsw-alias-button-floating-fill: rgba(var(--dwp-theme-layer-1-rgb), calc(var(--dwp-active-surface) + .14)) !important;
+        --dsw-alias-button-floating-hover: rgba(var(--dwp-theme-layer-2-rgb), calc(var(--dwp-active-surface) + .18)) !important;
         --dsw-alias-label-primary: rgba(250, 252, 255, .96) !important;
         --dsw-alias-label-secondary: rgba(224, 231, 244, .78) !important;
         --dsw-alias-border-l1: rgba(255, 255, 255, .09) !important;
         --dsw-alias-border-l2: rgba(255, 255, 255, .14) !important;
       }
+      body[data-dsh-wallpaper="active"] {
+        --dwp-active-surface: var(--dwp-surface);
+        background: transparent !important;
+      }
       body[data-dsh-wallpaper="active"] #root {
         background: transparent !important;
+      }
+      body[data-dsh-theme="active"] {
+        --dsw-alias-brand-primary: var(--dwp-accent) !important;
+        --dsw-alias-brand-text: var(--dwp-accent) !important;
+        --dsw-alias-button-primary-fill: var(--dwp-button) !important;
+        --dsw-alias-button-primary-hover: var(--dwp-button-hover) !important;
+        --dsw-alias-button-info-fill: var(--dwp-button) !important;
+        --dsw-alias-button-info-hover: var(--dwp-button-hover) !important;
+        --dsw-alias-label-primary-inverted: var(--dwp-button-text) !important;
+        --dsw-alias-label-primary-foreground: var(--dwp-button-text) !important;
+        --dsw-alias-state-business-primary: var(--dwp-accent) !important;
+        --dsw-alias-state-business-tertiary: color-mix(in srgb, var(--dwp-accent) 18%, transparent) !important;
+        --dsw-font-family: var(--dwp-font-family) !important;
+        --dsw-font-xl-24: 600 calc(24px * var(--dwp-font-scale))/calc(32px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-l-20: 500 calc(20px * var(--dwp-font-scale))/calc(28px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-m-18: 500 calc(16px * var(--dwp-font-scale))/calc(28px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-base-16: calc(16px * var(--dwp-font-scale))/calc(24px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-base-strong-16: 500 calc(16px * var(--dwp-font-scale))/calc(24px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-s-14: calc(14px * var(--dwp-font-scale))/calc(22px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-s-strong-14: 500 calc(14px * var(--dwp-font-scale))/calc(22px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-xs-13: calc(13px * var(--dwp-font-scale))/calc(20px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-xs-strong-13: 500 calc(13px * var(--dwp-font-scale))/calc(20px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-xxs-12: calc(12px * var(--dwp-font-scale))/calc(18px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-xxs-strong-12: 500 calc(12px * var(--dwp-font-scale))/calc(18px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-xxxs-11: calc(11px * var(--dwp-font-scale))/calc(14px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-xxxs-strong-11: 500 calc(11px * var(--dwp-font-scale))/calc(14px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-markdown-h1: 700 calc(24px * var(--dwp-font-scale))/calc(34px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-markdown-h2: 700 calc(22px * var(--dwp-font-scale))/calc(32px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-markdown-h3: 700 calc(20px * var(--dwp-font-scale))/calc(30px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-markdown-h4: 600 calc(16px * var(--dwp-font-scale))/calc(28px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-markdown-base: calc(16px * var(--dwp-font-scale))/calc(28px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        --dsw-font-markdown-small: calc(14px * var(--dwp-font-scale))/calc(24px * var(--dwp-font-scale)) var(--dwp-font-family) !important;
+        accent-color: var(--dwp-accent);
+      }
+      body[data-dsh-theme="active"][data-dwp-button-style="rounded"] #root button { border-radius: 12px !important; }
+      body[data-dsh-theme="active"][data-dwp-button-style="pill"] #root button { border-radius: 999px !important; }
+      body[data-dsh-theme="active"][data-dwp-button-style="square"] #root button { border-radius: 4px !important; }
+      body[data-dsh-theme="active"][data-dwp-button-style="glass"] #root button {
+        border-radius: 14px !important;
+        border-color: color-mix(in srgb, var(--dwp-accent) 28%, rgba(255,255,255,.14)) !important;
+        box-shadow: inset 0 1px rgba(255,255,255,.12), 0 7px 20px rgba(0,0,0,.12);
+        backdrop-filter: blur(14px) saturate(1.25);
       }
       #root { position: relative; z-index: 1; }
       #dsh-live-wallpaper-layer {
@@ -383,6 +500,35 @@ window.__ModuleLoader__.load({
       .preset::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 20%, rgba(0,0,0,.6)); }
       .preset span { position: absolute; z-index: 1; left: 10px; bottom: 8px; font-size: 12px; font-weight: 650; text-shadow: 0 1px 6px #000; }
       .preset[aria-pressed="true"] { outline: 2px solid #5eead4; outline-offset: -2px; }
+      .theme-presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+      .theme-preset {
+        display: grid;
+        place-items: end center;
+        height: 50px;
+        padding: 6px 3px;
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 11px;
+        color: #fff;
+        background:
+          radial-gradient(circle at 72% 25%, var(--accent) 0 13%, transparent 14%),
+          linear-gradient(145deg, var(--base), color-mix(in srgb, var(--base) 62%, var(--accent)));
+        box-shadow: inset 0 1px rgba(255,255,255,.08);
+        cursor: pointer;
+        font-size: 10px;
+        text-shadow: 0 1px 4px #000;
+      }
+      .theme-preset[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+      .color-field { display: grid; gap: 5px; color: #aebbd1; font-size: 11px; }
+      input[type="color"] {
+        width: 100%;
+        height: 34px;
+        padding: 3px;
+        border: 1px solid rgba(255,255,255,.13);
+        border-radius: 9px;
+        background: rgba(255,255,255,.055);
+        cursor: pointer;
+      }
       .field { display: grid; gap: 7px; margin-top: 9px; }
       .field > span, .range-head { color: #c7d2e5; font-size: 12px; }
       input[type="url"], input[type="text"], select {
@@ -416,7 +562,7 @@ window.__ModuleLoader__.load({
       .range-head { display: flex; justify-content: space-between; margin-bottom: 3px; }
       input[type="range"] { width: 100%; accent-color: #56d9c0; }
       .control-row { justify-content: space-between; margin-top: 11px; }
-      .control-row select { width: 100px; }
+      .control-row select { width: 132px; }
       .resource-links { display: flex; flex-wrap: wrap; gap: 7px; }
       .resource-links a {
         color: #bfe9ff;
@@ -469,12 +615,12 @@ window.__ModuleLoader__.load({
       const shadow = controls.attachShadow({ mode: 'open' })
       shadow.innerHTML = `
         <style>${PANEL_CSS}</style>
-        <button class="launcher" type="button" aria-label="打开动态壁纸中心" aria-expanded="false">
+        <button class="launcher" type="button" aria-label="打开壁纸与主题中心" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v9a2.5 2.5 0 0 1-2.5 2.5H13v2h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2H6.5A2.5 2.5 0 0 1 4 14.5v-9Z" stroke="currentColor" stroke-width="1.7"/><path d="m7 12 2.2-2.2a1 1 0 0 1 1.4 0l1.3 1.3 2.4-3a1 1 0 0 1 1.5-.08L18 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <section class="panel" hidden aria-label="动态壁纸中心">
+        <section class="panel" hidden aria-label="壁纸与主题中心">
           <header class="header">
-            <h2>动态壁纸中心</h2>
+            <h2>壁纸与主题中心</h2>
             <button class="icon-button close" type="button" aria-label="关闭">✕</button>
           </header>
 
@@ -482,6 +628,31 @@ window.__ModuleLoader__.load({
             <span>启用当前壁纸</span>
             <input class="enabled" type="checkbox">
           </label>
+
+          <h3>页面主题</h3>
+          <label class="switch-row">
+            <span>启用主题外观</span>
+            <input class="theme-enabled" type="checkbox">
+          </label>
+          <div class="theme-presets" aria-label="主题预设">
+            <button class="theme-preset" type="button" data-theme-preset="ocean" style="--base:#071326;--accent:#64e0c8">深海</button>
+            <button class="theme-preset" type="button" data-theme-preset="violet" style="--base:#160c2e;--accent:#a78bfa">紫晶</button>
+            <button class="theme-preset" type="button" data-theme-preset="forest" style="--base:#071d18;--accent:#5ee0a0">森林</button>
+            <button class="theme-preset" type="button" data-theme-preset="sunset" style="--base:#2a1118;--accent:#fb7185">落日</button>
+            <button class="theme-preset" type="button" data-theme-preset="graphite" style="--base:#12151b;--accent:#8ea4c8">石墨</button>
+          </div>
+          <div class="color-grid">
+            <label class="color-field"><span>主题底色</span><input class="theme-color" type="color" aria-label="主题底色"></label>
+            <label class="color-field"><span>强调色</span><input class="accent-color" type="color" aria-label="强调色"></label>
+            <label class="color-field"><span>按钮色</span><input class="button-color" type="color" aria-label="按钮颜色"></label>
+          </div>
+          <label class="control-row"><span>按钮形态</span><select class="button-style"><option value="native">DSH 原生</option><option value="rounded">圆角</option><option value="pill">胶囊</option><option value="square">直角</option><option value="glass">玻璃</option></select></label>
+          <label class="control-row"><span>字体风格</span><select class="font-style"><option value="system">系统无衬线</option><option value="rounded">圆体</option><option value="serif">衬线</option><option value="mono">等宽</option></select></label>
+          <label class="range">
+            <span class="range-head"><span>基础字号</span><output class="font-scale-value"></output></span>
+            <input class="font-scale" type="range" min="0.9" max="1.15" step="0.05">
+          </label>
+          <p class="hint">主题设置独立于壁纸，可单独关闭；“恢复默认”会撤销全部外观覆盖。</p>
 
           <h3>内置动态</h3>
           <div class="presets">
@@ -643,9 +814,25 @@ window.__ModuleLoader__.load({
       }
 
       function syncAppearance() {
+        const appearance = state.themeEnabled ? state : DEFAULT_STATE
+        const rootStyle = document.documentElement.style
+        const themeRgb = hexToRgb(appearance.themeColor).join(', ')
+        const layerOneRgb = hexToRgb(shadeHex(appearance.themeColor, 0.07)).join(', ')
+        const layerTwoRgb = hexToRgb(shadeHex(appearance.themeColor, 0.14)).join(', ')
         layer.hidden = !state.enabled
         document.body.dataset.dshWallpaper = state.enabled ? 'active' : 'inactive'
-        document.documentElement.style.setProperty('--dwp-surface', String(state.surface))
+        document.body.dataset.dshTheme = state.themeEnabled ? 'active' : 'inactive'
+        document.body.dataset.dwpButtonStyle = state.themeEnabled ? state.buttonStyle : 'native'
+        rootStyle.setProperty('--dwp-surface', String(state.surface))
+        rootStyle.setProperty('--dwp-theme-rgb', themeRgb)
+        rootStyle.setProperty('--dwp-theme-layer-1-rgb', layerOneRgb)
+        rootStyle.setProperty('--dwp-theme-layer-2-rgb', layerTwoRgb)
+        rootStyle.setProperty('--dwp-accent', appearance.accentColor)
+        rootStyle.setProperty('--dwp-button', appearance.buttonColor)
+        rootStyle.setProperty('--dwp-button-hover', shadeHex(appearance.buttonColor, 0.14))
+        rootStyle.setProperty('--dwp-button-text', contrastText(appearance.buttonColor))
+        rootStyle.setProperty('--dwp-font-family', FONT_STACKS[appearance.fontStyle])
+        rootStyle.setProperty('--dwp-font-scale', String(appearance.fontScale))
         scrim.style.opacity = String(state.dim)
         content.style.filter = state.blur > 0 ? `blur(${state.blur}px)` : ''
         content.style.transform = state.blur > 0 ? `scale(${1 + state.blur / 500})` : ''
@@ -654,6 +841,13 @@ window.__ModuleLoader__.load({
 
       function refreshPanel() {
         $('.enabled').checked = state.enabled
+        $('.theme-enabled').checked = state.themeEnabled
+        $('.theme-color').value = state.themeColor
+        $('.accent-color').value = state.accentColor
+        $('.button-color').value = state.buttonColor
+        $('.button-style').value = state.buttonStyle
+        $('.font-style').value = state.fontStyle
+        $('.font-scale').value = String(state.fontScale)
         $('.dim').value = String(state.dim)
         $('.blur').value = String(state.blur)
         $('.surface').value = String(state.surface)
@@ -662,8 +856,12 @@ window.__ModuleLoader__.load({
         $('.dim-value').textContent = `${Math.round(state.dim * 100)}%`
         $('.blur-value').textContent = `${Math.round(state.blur)}px`
         $('.surface-value').textContent = `${Math.round(state.surface * 100)}%`
+        $('.font-scale-value').textContent = `${Math.round(state.fontScale * 100)}%`
         for (const button of shadow.querySelectorAll('[data-preset]')) {
           button.setAttribute('aria-pressed', String(state.source.type === 'preset' && state.source.id === button.dataset.preset))
+        }
+        for (const button of shadow.querySelectorAll('[data-theme-preset]')) {
+          button.setAttribute('aria-pressed', String(state.themePreset === button.dataset.themePreset))
         }
       }
 
@@ -697,6 +895,46 @@ window.__ModuleLoader__.load({
         state = { ...state, enabled: event.currentTarget.checked }
         commit()
         showStatus(state.enabled ? '壁纸已启用。' : '壁纸已暂停显示。')
+      })
+      $('.theme-enabled').addEventListener('change', event => {
+        state = { ...state, themeEnabled: event.currentTarget.checked }
+        commit()
+        showStatus(state.themeEnabled ? '页面主题已启用。' : '页面主题已关闭，已恢复 DSH 原生外观。')
+      })
+      for (const button of shadow.querySelectorAll('[data-theme-preset]')) {
+        button.addEventListener('click', () => {
+          const id = button.dataset.themePreset
+          const preset = THEME_PRESETS[id]
+          state = {
+            ...state,
+            themeEnabled: true,
+            themePreset: id,
+            themeColor: preset.base,
+            accentColor: preset.accent,
+            buttonColor: preset.button,
+          }
+          commit()
+          showStatus(`已应用“${button.textContent.trim()}”页面主题。`)
+        })
+      }
+      for (const key of ['themeColor', 'accentColor', 'buttonColor']) {
+        const control = $(`.${key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}`)
+        control.addEventListener('input', event => {
+          state = { ...state, themeEnabled: true, themePreset: 'custom', [key]: event.currentTarget.value }
+          commit()
+        })
+      }
+      $('.button-style').addEventListener('change', event => {
+        state = { ...state, themeEnabled: true, buttonStyle: event.currentTarget.value }
+        commit()
+      })
+      $('.font-style').addEventListener('change', event => {
+        state = { ...state, themeEnabled: true, fontStyle: event.currentTarget.value }
+        commit()
+      })
+      $('.font-scale').addEventListener('input', event => {
+        state = { ...state, themeEnabled: true, fontScale: Number(event.currentTarget.value) }
+        commit()
       })
       for (const button of shadow.querySelectorAll('[data-preset]')) {
         button.addEventListener('click', () => setSource(
@@ -785,7 +1023,20 @@ window.__ModuleLoader__.load({
           controls.remove()
           globalStyle.remove()
           delete document.body.dataset.dshWallpaper
-          document.documentElement.style.removeProperty('--dwp-surface')
+          delete document.body.dataset.dshTheme
+          delete document.body.dataset.dwpButtonStyle
+          for (const property of [
+            '--dwp-surface',
+            '--dwp-theme-rgb',
+            '--dwp-theme-layer-1-rgb',
+            '--dwp-theme-layer-2-rgb',
+            '--dwp-accent',
+            '--dwp-button',
+            '--dwp-button-hover',
+            '--dwp-button-text',
+            '--dwp-font-family',
+            '--dwp-font-scale',
+          ]) document.documentElement.style.removeProperty(property)
         },
       }
     }
@@ -798,6 +1049,7 @@ window.__ModuleLoader__.load({
 
     exports.apply = apply
     exports.normalizeState = normalizeState
+    exports.contrastText = contrastText
     exports.parseRemoteUrl = parseRemoteUrl
     exports.parseShaderId = parseShaderId
     return module.exports

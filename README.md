@@ -24,7 +24,13 @@ dsh web
 
 打开 DSH 后，点击右下角的圆形壁纸按钮。
 
-## 安装已发布版本
+## 从 GitHub 安装
+
+```sh
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.1.0
+```
+
+## 从 npm 安装
 
 ```sh
 dsh plugin --profile web add dsh-live-wallpaper

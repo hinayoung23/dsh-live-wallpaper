@@ -564,15 +564,19 @@ window.__ModuleLoader__.load({
       .control-row { justify-content: space-between; margin-top: 11px; }
       .control-row select { width: 132px; }
       .resource-links { display: flex; flex-wrap: wrap; gap: 7px; }
-      .resource-links a {
+      .resource-links a, .resource-links button {
+        appearance: none;
+        font: inherit;
         color: #bfe9ff;
         text-decoration: none;
         border: 1px solid rgba(125,211,252,.18);
         border-radius: 999px;
         padding: 5px 9px;
         background: rgba(56,189,248,.07);
+        cursor: pointer;
       }
-      .resource-links a:hover { background: rgba(56,189,248,.14); }
+      .resource-links a:hover, .resource-links button:hover { background: rgba(56,189,248,.14); }
+      .hint code { color: #c8f1ff; }
       .hint { font-size: 11px; color: #8796af; }
       .status { min-height: 19px; margin-top: 9px; color: #9ee7d8; font-size: 12px; }
       .status[data-kind="error"] { color: #fca5a5; }
@@ -672,14 +676,19 @@ window.__ModuleLoader__.load({
             <input class="remote-url" type="url" placeholder="https://…/wallpaper.mp4" aria-label="远程壁纸 URL">
             <button class="primary apply-remote" type="button">应用</button>
           </div>
-          <p class="hint">支持 HTTP(S)。远程站点可能禁止嵌入，视频推荐 MP4/WebM。</p>
+          <p class="hint">视频/图片需要“直接打开就是文件”的 HTTP(S) 直链，不要粘贴素材详情页。最稳妥的方式是下载后使用下方“本地文件”。</p>
 
           <h3>ShaderToy</h3>
           <div class="source-row">
             <input class="shader-id" type="text" placeholder="Shader ID 或官方链接" aria-label="ShaderToy ID 或链接">
             <button class="primary apply-shader" type="button">应用</button>
           </div>
-          <p class="hint">通过官方嵌入页播放；请遵守作品作者标注的许可。</p>
+          <p class="hint">作品地址形如 <code>shadertoy.com/view/XXcyRn</code>；<code>/view/</code> 后面的 <code>XXcyRn</code> 就是 ID。可粘贴完整链接，无需手动截取。</p>
+          <div class="resource-links">
+            <button class="shader-example" type="button">直接试用示例 XXcyRn</button>
+            <a href="https://www.shadertoy.com/view/XXcyRn" target="_blank" rel="noopener noreferrer">查看示例页面</a>
+          </div>
+          <p class="hint">ShaderToy 通过官方嵌入页播放。如果网站在当前网络无法访问，请改用内置动态壁纸，或下载 MP4 后本地应用；请遵守作品作者标注的许可。</p>
 
           <h3>本地文件</h3>
           <label class="file-button">选择视频、GIF 或图片<input class="local-file" type="file" accept="video/*,image/*,.gif"></label>
@@ -701,13 +710,12 @@ window.__ModuleLoader__.load({
           <label class="control-row"><span>视频速度</span><select class="speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
           <label class="switch-row"><span>跟随系统“减少动态效果”</span><input class="respect-motion" type="checkbox"></label>
 
-          <h3>发现资源</h3>
+          <h3>下载壁纸素材</h3>
           <div class="resource-links">
-            <a href="https://www.shadertoy.com/results?query=" target="_blank" rel="noopener noreferrer">ShaderToy</a>
-            <a href="https://www.desktophut.com/" target="_blank" rel="noopener noreferrer">DesktopHut</a>
-            <a href="https://github.com/rocksdanister/lively" target="_blank" rel="noopener noreferrer">Lively</a>
+            <a href="https://www.pexels.com/search/videos/animated%20wallpaper/" target="_blank" rel="noopener noreferrer">Pexels 动态视频</a>
+            <a href="https://pixabay.com/videos/search/animated%20background/" target="_blank" rel="noopener noreferrer">Pixabay 动态视频</a>
           </div>
-          <p class="hint">插件不抓取第三方市场；可下载文件后本地应用，或粘贴有权使用的直链。</p>
+          <p class="hint">推荐流程：打开素材页 → 下载 MP4/WebM → 点击上方“选择视频、GIF 或图片”。不要把素材详情页地址填入视频 URL。</p>
 
           <div class="status" role="status" aria-live="polite"></div>
           <footer class="footer"><span class="hint">设置自动保存在此浏览器</span><button class="secondary reset" type="button">恢复默认</button></footer>
@@ -958,6 +966,11 @@ window.__ModuleLoader__.load({
           return
         }
         setSource({ type: 'shader', id }, `ShaderToy ${id} 已应用。`)
+      })
+      $('.shader-example').addEventListener('click', () => {
+        const id = 'XXcyRn'
+        $('.shader-id').value = id
+        setSource({ type: 'shader', id }, `ShaderToy 示例 ${id} 已应用；若画面空白，请检查当前网络能否访问 shadertoy.com。`)
       })
       $('.local-file').addEventListener('change', event => {
         const file = event.currentTarget.files?.[0]

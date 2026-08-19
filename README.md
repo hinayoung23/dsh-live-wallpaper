@@ -35,7 +35,7 @@ dsh web
 ### 从 GitHub 安装
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.0
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.1
 ```
 
 ### 从 npm 安装
@@ -44,11 +44,30 @@ dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.0
 dsh plugin --profile web add dsh-live-wallpaper
 ```
 
+### 素材使用方法
+
+最简单、最稳定的方式是直接使用面板中的四款“内置动态”，它们不需要访问任何外部网站。
+
+使用下载的视频：
+
+1. 在插件面板的“下载壁纸素材”中打开 Pexels 或 Pixabay。
+2. 在网站中选择作品并下载 MP4/WebM 文件，不要复制作品详情页地址。
+3. 回到插件面板，在“本地文件”中点击“选择视频、GIF 或图片”。
+
+使用 ShaderToy：
+
+1. 可以先点击插件面板中的“直接试用示例 XXcyRn”。
+2. 自己寻找作品时，打开 ShaderToy 的作品页面，地址形如 `https://www.shadertoy.com/view/XXcyRn`。
+3. `/view/` 后面的 `XXcyRn` 就是 Shader ID；也可以把完整作品链接直接粘贴到插件中，无需手动提取。
+4. 如果 ShaderToy 在当前网络无法访问或应用后画面空白，请使用内置动态壁纸，或下载视频后通过本地文件应用。
+
+“视频 / 图片 URL”要求媒体直链，即在浏览器中打开后直接显示视频或图片；Pexels、Pixabay 等素材详情页不能作为媒体直链使用。
+
 ### 来源与安全
 
 - ShaderToy 使用其官方 `shadertoy.com/embed/<id>` 页面。插件不会绕过访问控制，也不会下载 Shader 源码。
 - 远程网页在不带 `allow-same-origin` 的 sandbox iframe 中运行；壁纸层默认不接收鼠标事件。
-- 插件不会抓取 DesktopHut、MoeWalls、Wallpaper Engine Workshop 或其他第三方市场。
+- 插件不会抓取、代理或绕过任何第三方壁纸市场的访问控制。
 - 使用第三方视频、图片或 Shader 前，请确认其授权允许你的使用方式。
 
 ### 已知限制
@@ -101,7 +120,7 @@ After opening DSH, click the round wallpaper button in the lower-right corner.
 ### Install from GitHub
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.0
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.1
 ```
 
 ### Install from npm
@@ -110,11 +129,30 @@ dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.0
 dsh plugin --profile web add dsh-live-wallpaper
 ```
 
+### How to Use Wallpaper Sources
+
+The easiest and most reliable option is to use one of the four Built-in Animation presets. They do not require access to any external website.
+
+To use a downloaded video:
+
+1. Open Pexels or Pixabay from the Download Wallpaper Media section in the plugin panel.
+2. Choose a video and download its MP4/WebM file. Do not copy the asset detail page URL.
+3. Return to the plugin panel and click Choose Video, GIF, or Image under Local File.
+
+To use ShaderToy:
+
+1. Start with the Try Example XXcyRn button in the plugin panel.
+2. To use another shader, open its ShaderToy page. Its address will look like `https://www.shadertoy.com/view/XXcyRn`.
+3. The value after `/view/`—`XXcyRn` in this example—is the Shader ID. You can also paste the complete page URL into the plugin without extracting the ID yourself.
+4. If ShaderToy is unavailable on your network or the result is blank, use a built-in animation or download a video and apply it as a local file.
+
+The Video / Image URL field requires a direct media URL—one that opens the video or image itself in a browser. Pexels and Pixabay asset detail pages are not direct media URLs.
+
 ### Sources and Security
 
 - ShaderToy wallpapers use the official `shadertoy.com/embed/<id>` page. The plugin does not bypass access controls or download shader source code.
 - Remote pages run inside a sandboxed iframe without `allow-same-origin`; the wallpaper layer does not receive pointer events by default.
-- The plugin does not scrape DesktopHut, MoeWalls, the Wallpaper Engine Workshop, or other third-party marketplaces.
+- The plugin does not scrape, proxy, or bypass access controls for any third-party wallpaper marketplace.
 - Before using third-party videos, images, or shaders, confirm that their licenses permit your intended use.
 
 ### Known Limitations

@@ -1,6 +1,6 @@
 {
   "name": "dsh-live-wallpaper",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A dependency-free live wallpaper and theme center for the DeepSeek Harness Web UI.",
   "author": "hinayoung23",
   "type": "module",

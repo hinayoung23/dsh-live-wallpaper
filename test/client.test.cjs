@@ -101,3 +101,13 @@ test('button labels keep readable contrast against custom colors', () => {
   assert.equal(contrastText('#f8fafc'), '#07111d')
   assert.equal(contrastText('#111827'), '#ffffff')
 })
+
+test('resource guidance provides an actionable shader example and downloadable videos', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'client.js'), 'utf8')
+  assert.match(source, /shadertoy\.com\/view\/XXcyRn/)
+  assert.match(source, /直接试用示例 XXcyRn/)
+  assert.match(source, /pexels\.com\/search\/videos\/animated%20wallpaper/)
+  assert.match(source, /pixabay\.com\/videos\/search\/animated%20background/)
+  assert.doesNotMatch(source, /desktophut\.com/)
+  assert.doesNotMatch(source, /github\.com\/rocksdanister\/lively/)
+})

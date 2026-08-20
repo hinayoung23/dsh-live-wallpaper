@@ -36,6 +36,21 @@ test('ShaderToy ids are accepted from ids and official URLs', () => {
   assert.equal(parseShaderId('not a shader'), undefined)
 })
 
+test('the bundled ShaderToy example survives persisted-state normalization', () => {
+  const { normalizeState } = loadClientExports()
+  const state = normalizeState({
+    enabled: true,
+    source: { type: 'shader-example', id: 'XXcyRn' },
+  })
+  assert.equal(state.enabled, true)
+  assert.equal(state.source.type, 'shader-example')
+  assert.equal(state.source.id, 'XXcyRn')
+
+  const invalid = normalizeState({ source: { type: 'shader-example', id: 'invalid' } })
+  assert.equal(invalid.source.type, 'preset')
+  assert.equal(invalid.source.id, 'aurora')
+})
+
 test('remote media validation only permits HTTP(S)', () => {
   const { parseRemoteUrl } = loadClientExports()
   assert.equal(parseRemoteUrl('https://cdn.example.com/wallpaper.webm'), 'https://cdn.example.com/wallpaper.webm')
@@ -106,6 +121,7 @@ test('resource guidance provides an actionable shader example and downloadable v
   const source = fs.readFileSync(path.join(__dirname, '..', 'client.js'), 'utf8')
   assert.match(source, /shadertoy\.com\/view\/XXcyRn/)
   assert.match(source, /直接试用示例 XXcyRn/)
+  assert.match(source, /示例 XXcyRn 由插件在本地兼容渲染/)
   assert.match(source, /pexels\.com\/search\/videos\/animated%20wallpaper/)
   assert.match(source, /pixabay\.com\/videos\/search\/animated%20background/)
   assert.doesNotMatch(source, /desktophut\.com/)

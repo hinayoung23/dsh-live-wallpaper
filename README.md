@@ -35,7 +35,7 @@ dsh web
 ### 从 GitHub 安装
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.1
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.2
 ```
 
 ### 从 npm 安装
@@ -56,16 +56,16 @@ dsh plugin --profile web add dsh-live-wallpaper
 
 使用 ShaderToy：
 
-1. 可以先点击插件面板中的“直接试用示例 XXcyRn”。
+1. 可以先点击插件面板中的“直接试用示例 XXcyRn”；该示例由插件在本地兼容渲染，不依赖跨站嵌入。
 2. 自己寻找作品时，打开 ShaderToy 的作品页面，地址形如 `https://www.shadertoy.com/view/XXcyRn`。
 3. `/view/` 后面的 `XXcyRn` 就是 Shader ID；也可以把完整作品链接直接粘贴到插件中，无需手动提取。
-4. 如果 ShaderToy 在当前网络无法访问或应用后画面空白，请使用内置动态壁纸，或下载视频后通过本地文件应用。
+4. 其他 ShaderToy 作品仍通过官方嵌入页播放。如果站点安全策略阻止跨页嵌入，请使用本地示例、内置动态壁纸，或下载视频后通过本地文件应用。
 
 “视频 / 图片 URL”要求媒体直链，即在浏览器中打开后直接显示视频或图片；Pexels、Pixabay 等素材详情页不能作为媒体直链使用。
 
 ### 来源与安全
 
-- ShaderToy 使用其官方 `shadertoy.com/embed/<id>` 页面。插件不会绕过访问控制，也不会下载 Shader 源码。
+- 示例 XXcyRn 使用插件内置的本地兼容渲染；其他 ShaderToy ID 使用官方 `shadertoy.com/embed/<id>` 页面。插件不会绕过访问控制，也不会下载 Shader 源码。
 - 远程网页在不带 `allow-same-origin` 的 sandbox iframe 中运行；壁纸层默认不接收鼠标事件。
 - 插件不会抓取、代理或绕过任何第三方壁纸市场的访问控制。
 - 使用第三方视频、图片或 Shader 前，请确认其授权允许你的使用方式。
@@ -74,6 +74,7 @@ dsh plugin --profile web add dsh-live-wallpaper
 
 - 浏览器不能在刷新后重新取得本地文件权限，因此本地文件壁纸仅在当前页面生命周期内有效。
 - 远程服务器可能禁止跨站嵌入或热链；这时请下载文件后通过“本地文件”使用。
+- ShaderToy 可能通过 Cloudflare 或 `X-Frame-Options` 阻止第三方页面嵌入；本地示例 XXcyRn 不受影响。
 - ShaderToy 的可用性受网络、浏览器 WebGL 能力和作品自身许可约束。
 
 ### 开发验证
@@ -120,7 +121,7 @@ After opening DSH, click the round wallpaper button in the lower-right corner.
 ### Install from GitHub
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.1
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.2
 ```
 
 ### Install from npm
@@ -141,16 +142,16 @@ To use a downloaded video:
 
 To use ShaderToy:
 
-1. Start with the Try Example XXcyRn button in the plugin panel.
+1. Start with the Try Example XXcyRn button in the plugin panel. The plugin renders this example locally, without relying on cross-site embedding.
 2. To use another shader, open its ShaderToy page. Its address will look like `https://www.shadertoy.com/view/XXcyRn`.
 3. The value after `/view/`—`XXcyRn` in this example—is the Shader ID. You can also paste the complete page URL into the plugin without extracting the ID yourself.
-4. If ShaderToy is unavailable on your network or the result is blank, use a built-in animation or download a video and apply it as a local file.
+4. Other ShaderToy works still use the official embed page. If the site's security policy blocks cross-page embedding, use the local example, a built-in animation, or a downloaded video as a local file.
 
 The Video / Image URL field requires a direct media URL—one that opens the video or image itself in a browser. Pexels and Pixabay asset detail pages are not direct media URLs.
 
 ### Sources and Security
 
-- ShaderToy wallpapers use the official `shadertoy.com/embed/<id>` page. The plugin does not bypass access controls or download shader source code.
+- Example XXcyRn uses the plugin's bundled local compatibility renderer; other ShaderToy IDs use the official `shadertoy.com/embed/<id>` page. The plugin does not bypass access controls or download shader source code.
 - Remote pages run inside a sandboxed iframe without `allow-same-origin`; the wallpaper layer does not receive pointer events by default.
 - The plugin does not scrape, proxy, or bypass access controls for any third-party wallpaper marketplace.
 - Before using third-party videos, images, or shaders, confirm that their licenses permit your intended use.
@@ -159,6 +160,7 @@ The Video / Image URL field requires a direct media URL—one that opens the vid
 
 - Browsers cannot recover local file permissions after a page reload, so local-file wallpapers remain available only for the current page lifecycle.
 - Remote servers may block cross-origin embedding or hotlinking. In that case, download the file and use the Local File option.
+- ShaderToy may block third-party embedding through Cloudflare or `X-Frame-Options`; the local XXcyRn example is unaffected.
 - ShaderToy availability depends on the network connection, browser WebGL support, and the license of each shader.
 
 ### Development Verification

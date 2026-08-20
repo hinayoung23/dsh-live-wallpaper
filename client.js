@@ -6,6 +6,7 @@ window.__ModuleLoader__.load({
 
     const PLUGIN_ID = 'dsh-live-wallpaper'
     const STORAGE_KEY = 'dsh-live-wallpaper:settings:v1'
+    const SHADER_EXAMPLE_ID = 'XXcyRn'
     const PRESET_IDS = new Set(['aurora', 'nebula', 'sunset', 'grid'])
     const LOCAL_TYPES = new Set(['local-video', 'local-image'])
     const BUTTON_STYLES = new Set(['native', 'rounded', 'pill', 'square', 'glass'])
@@ -104,6 +105,9 @@ window.__ModuleLoader__.load({
       if (value.type === 'shader') {
         const id = parseShaderId(value.id)
         if (id !== undefined) return { type: 'shader', id }
+      }
+      if (value.type === 'shader-example' && value.id === SHADER_EXAMPLE_ID) {
+        return { type: 'shader-example', id: SHADER_EXAMPLE_ID }
       }
       if (value.type === 'video' || value.type === 'image' || value.type === 'webpage') {
         const url = parseRemoteUrl(value.url)
@@ -251,6 +255,7 @@ window.__ModuleLoader__.load({
       }
       #dsh-live-wallpaper-layer .dwp-content,
       #dsh-live-wallpaper-layer .dwp-scene,
+      #dsh-live-wallpaper-layer canvas,
       #dsh-live-wallpaper-layer video,
       #dsh-live-wallpaper-layer img,
       #dsh-live-wallpaper-layer iframe {
@@ -276,6 +281,14 @@ window.__ModuleLoader__.load({
       #dsh-live-wallpaper-layer[data-paused="true"] *::before,
       #dsh-live-wallpaper-layer[data-paused="true"] *::after {
         animation-play-state: paused !important;
+      }
+      .dwp-shader-example {
+        background:
+          radial-gradient(circle at 28% 35%, rgba(255, 76, 190, .82), transparent 36%),
+          radial-gradient(circle at 72% 65%, rgba(46, 214, 255, .82), transparent 38%),
+          linear-gradient(135deg, #24115d, #087f8c);
+        background-size: 130% 130%;
+        animation: dwp-shader-example-fallback 7s ease-in-out infinite alternate;
       }
       .dwp-preset-aurora {
         overflow: hidden;
@@ -400,6 +413,7 @@ window.__ModuleLoader__.load({
       @keyframes dwp-water { to { transform: translateY(3%) scaleX(1.04); } }
       @keyframes dwp-grid { to { background-position: 0 35px, 54px 0; } }
       @keyframes dwp-horizon { to { opacity: .62; box-shadow: 0 0 42px 13px rgba(255, 54, 234, .64); } }
+      @keyframes dwp-shader-example-fallback { to { background-position: 100% 100%; filter: hue-rotate(42deg); } }
     `
 
     const PANEL_CSS = `
@@ -688,7 +702,7 @@ window.__ModuleLoader__.load({
             <button class="shader-example" type="button">直接试用示例 XXcyRn</button>
             <a href="https://www.shadertoy.com/view/XXcyRn" target="_blank" rel="noopener noreferrer">查看示例页面</a>
           </div>
-          <p class="hint">ShaderToy 通过官方嵌入页播放。如果网站在当前网络无法访问，请改用内置动态壁纸，或下载 MP4 后本地应用；请遵守作品作者标注的许可。</p>
+          <p class="hint">示例 XXcyRn 由插件在本地兼容渲染。其他作品通过官方嵌入页播放，可能被 ShaderToy 的站点安全策略阻止；请遵守作品作者标注的许可。</p>
 
           <h3>本地文件</h3>
           <label class="file-button">选择视频、GIF 或图片<input class="local-file" type="file" accept="video/*,image/*,.gif"></label>
@@ -741,6 +755,7 @@ window.__ModuleLoader__.load({
       }
 
       function clearContent() {
+        currentMedia?.__dwpDispose?.()
         currentMedia = undefined
         content.replaceChildren()
       }
@@ -763,6 +778,109 @@ window.__ModuleLoader__.load({
         return iframe
       }
 
+      function makeShaderExample() {
+        const canvas = makeElement('canvas', 'dwp-shader-example')
+        const gl = canvas.getContext('webgl', {
+          alpha: false,
+          antialias: false,
+          depth: false,
+          powerPreference: 'low-power',
+        })
+        if (gl === null) return canvas
+
+        function compileShader(type, source) {
+          const shader = gl.createShader(type)
+          if (shader === null) return undefined
+          gl.shaderSource(shader, source)
+          gl.compileShader(shader)
+          if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader
+          gl.deleteShader(shader)
+          return undefined
+        }
+
+        const vertexShader = compileShader(gl.VERTEX_SHADER, `
+          attribute vec2 position;
+          void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+          }
+        `)
+        const fragmentShader = compileShader(gl.FRAGMENT_SHADER, `
+          precision highp float;
+          uniform vec2 resolution;
+          uniform float time;
+          void main() {
+            vec2 uv = gl_FragCoord.xy / resolution.xy;
+            vec3 color = 0.5 + 0.5 * cos(time + vec3(uv.x, uv.y, uv.x) + vec3(0.0, 2.0, 4.0));
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `)
+        if (vertexShader === undefined || fragmentShader === undefined) {
+          if (vertexShader !== undefined) gl.deleteShader(vertexShader)
+          if (fragmentShader !== undefined) gl.deleteShader(fragmentShader)
+          return canvas
+        }
+
+        const program = gl.createProgram()
+        const buffer = gl.createBuffer()
+        if (program === null || buffer === null) {
+          gl.deleteShader(vertexShader)
+          gl.deleteShader(fragmentShader)
+          if (program !== null) gl.deleteProgram(program)
+          if (buffer !== null) gl.deleteBuffer(buffer)
+          return canvas
+        }
+        gl.attachShader(program, vertexShader)
+        gl.attachShader(program, fragmentShader)
+        gl.linkProgram(program)
+        gl.deleteShader(vertexShader)
+        gl.deleteShader(fragmentShader)
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          gl.deleteProgram(program)
+          gl.deleteBuffer(buffer)
+          return canvas
+        }
+
+        const position = gl.getAttribLocation(program, 'position')
+        const resolution = gl.getUniformLocation(program, 'resolution')
+        const time = gl.getUniformLocation(program, 'time')
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
+        gl.useProgram(program)
+        gl.enableVertexAttribArray(position)
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
+
+        let elapsed = 0
+        let lastFrame
+        let animationFrame
+        const draw = now => {
+          if (!motionPaused()) {
+            if (lastFrame !== undefined) elapsed += Math.min(now - lastFrame, 100) / 1000
+            lastFrame = now
+            const pixelRatio = clamp(globalThis.devicePixelRatio, 1, 2, 1)
+            const width = Math.max(1, Math.round(canvas.clientWidth * pixelRatio))
+            const height = Math.max(1, Math.round(canvas.clientHeight * pixelRatio))
+            if (canvas.width !== width || canvas.height !== height) {
+              canvas.width = width
+              canvas.height = height
+              gl.viewport(0, 0, width, height)
+            }
+            gl.uniform2f(resolution, width, height)
+            gl.uniform1f(time, elapsed)
+            gl.drawArrays(gl.TRIANGLES, 0, 3)
+          } else {
+            lastFrame = undefined
+          }
+          animationFrame = requestAnimationFrame(draw)
+        }
+        animationFrame = requestAnimationFrame(draw)
+        canvas.__dwpDispose = () => {
+          cancelAnimationFrame(animationFrame)
+          gl.deleteProgram(program)
+          gl.deleteBuffer(buffer)
+        }
+        return canvas
+      }
+
       function makeWebpage(url) {
         const iframe = makeElement('iframe')
         iframe.src = url
@@ -779,6 +897,8 @@ window.__ModuleLoader__.load({
         let media
         if (source.type === 'preset') {
           media = makePreset(source.id)
+        } else if (source.type === 'shader-example') {
+          media = makeShaderExample()
         } else if (source.type === 'shader') {
           media = makeShader(source.id)
         } else if (source.type === 'video' || source.type === 'local-video') {
@@ -965,12 +1085,12 @@ window.__ModuleLoader__.load({
           showStatus('请输入有效的 ShaderToy ID 或官方链接。', 'error')
           return
         }
-        setSource({ type: 'shader', id }, `ShaderToy ${id} 已应用。`)
+        setSource({ type: 'shader', id }, `已请求加载 ShaderToy ${id}；若画面空白，可能是站点禁止跨页嵌入。`)
       })
       $('.shader-example').addEventListener('click', () => {
-        const id = 'XXcyRn'
+        const id = SHADER_EXAMPLE_ID
         $('.shader-id').value = id
-        setSource({ type: 'shader', id }, `ShaderToy 示例 ${id} 已应用；若画面空白，请检查当前网络能否访问 shadertoy.com。`)
+        setSource({ type: 'shader-example', id }, `ShaderToy 示例 ${id} 已通过本地兼容渲染应用。`)
       })
       $('.local-file').addEventListener('change', event => {
         const file = event.currentTarget.files?.[0]
@@ -1032,6 +1152,7 @@ window.__ModuleLoader__.load({
           document.removeEventListener('keydown', onKeyDown)
           reducedMotion?.removeEventListener?.('change', onReducedMotionChange)
           if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl)
+          clearContent()
           layer.remove()
           controls.remove()
           globalStyle.remove()

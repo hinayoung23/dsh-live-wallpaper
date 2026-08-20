@@ -36,19 +36,16 @@ test('ShaderToy ids are accepted from ids and official URLs', () => {
   assert.equal(parseShaderId('not a shader'), undefined)
 })
 
-test('the bundled ShaderToy example survives persisted-state normalization', () => {
+test('legacy iframe ShaderToy sources fall back to a safe built-in source', () => {
   const { normalizeState } = loadClientExports()
-  const state = normalizeState({
-    enabled: true,
-    source: { type: 'shader-example', id: 'XXcyRn' },
-  })
-  assert.equal(state.enabled, true)
-  assert.equal(state.source.type, 'shader-example')
-  assert.equal(state.source.id, 'XXcyRn')
-
-  const invalid = normalizeState({ source: { type: 'shader-example', id: 'invalid' } })
-  assert.equal(invalid.source.type, 'preset')
-  assert.equal(invalid.source.id, 'aurora')
+  for (const source of [
+    { type: 'shader', id: 'XXcyRn' },
+    { type: 'shader-example', id: 'XXcyRn' },
+  ]) {
+    const state = normalizeState({ enabled: true, source })
+    assert.equal(state.source.type, 'preset')
+    assert.equal(state.source.id, 'aurora')
+  }
 })
 
 test('remote media validation only permits HTTP(S)', () => {
@@ -76,6 +73,13 @@ test('persisted state is bounded and stale local URLs fall back safely', () => {
   assert.equal(state.blur, 0)
   assert.equal(state.surface, 0.94)
   assert.equal(state.speed, 2)
+
+  const capture = normalizeState({
+    enabled: true,
+    source: { type: 'shader-capture', id: 'XXcyRn' },
+  })
+  assert.equal(capture.enabled, false)
+  assert.equal(capture.source.type, 'preset')
 })
 
 test('theme settings accept presets and reject unsafe persisted values', () => {
@@ -120,8 +124,16 @@ test('button labels keep readable contrast against custom colors', () => {
 test('resource guidance provides an actionable shader example and downloadable videos', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'client.js'), 'utf8')
   assert.match(source, /shadertoy\.com\/view\/XXcyRn/)
-  assert.match(source, /直接试用示例 XXcyRn/)
-  assert.match(source, /示例 XXcyRn 由插件在本地兼容渲染/)
+  assert.match(source, /打开示例 XXcyRn/)
+  assert.match(source, /1\. 打开/)
+  assert.match(source, /2\. 捕获/)
+  assert.match(source, /getDisplayMedia/)
+  assert.match(source, /window\.open\(shaderPlayerUrl\(id\)/)
+  const captureImplementation = source.slice(
+    source.indexOf('function startShaderCapture'),
+    source.indexOf('function setPanelOpen'),
+  )
+  assert.doesNotMatch(captureImplementation, /window\.open/)
   assert.match(source, /pexels\.com\/search\/videos\/animated%20wallpaper/)
   assert.match(source, /pixabay\.com\/videos\/search\/animated%20background/)
   assert.doesNotMatch(source, /desktophut\.com/)

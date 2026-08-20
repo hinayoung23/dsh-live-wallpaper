@@ -6,9 +6,8 @@ window.__ModuleLoader__.load({
 
     const PLUGIN_ID = 'dsh-live-wallpaper'
     const STORAGE_KEY = 'dsh-live-wallpaper:settings:v1'
-    const SHADER_EXAMPLE_ID = 'XXcyRn'
     const PRESET_IDS = new Set(['aurora', 'nebula', 'sunset', 'grid'])
-    const LOCAL_TYPES = new Set(['local-video', 'local-image'])
+    const LOCAL_TYPES = new Set(['local-video', 'local-image', 'shader-capture'])
     const BUTTON_STYLES = new Set(['native', 'rounded', 'pill', 'square', 'glass'])
     const FONT_STYLES = new Set(['system', 'rounded', 'serif', 'mono'])
     const THEME_PRESETS = Object.freeze({
@@ -101,13 +100,6 @@ window.__ModuleLoader__.load({
       if (typeof value !== 'object' || value === null) return { ...DEFAULT_SOURCE }
       if (value.type === 'preset' && PRESET_IDS.has(value.id)) {
         return { type: 'preset', id: value.id }
-      }
-      if (value.type === 'shader') {
-        const id = parseShaderId(value.id)
-        if (id !== undefined) return { type: 'shader', id }
-      }
-      if (value.type === 'shader-example' && value.id === SHADER_EXAMPLE_ID) {
-        return { type: 'shader-example', id: SHADER_EXAMPLE_ID }
       }
       if (value.type === 'video' || value.type === 'image' || value.type === 'webpage') {
         const url = parseRemoteUrl(value.url)
@@ -255,7 +247,6 @@ window.__ModuleLoader__.load({
       }
       #dsh-live-wallpaper-layer .dwp-content,
       #dsh-live-wallpaper-layer .dwp-scene,
-      #dsh-live-wallpaper-layer canvas,
       #dsh-live-wallpaper-layer video,
       #dsh-live-wallpaper-layer img,
       #dsh-live-wallpaper-layer iframe {
@@ -281,14 +272,6 @@ window.__ModuleLoader__.load({
       #dsh-live-wallpaper-layer[data-paused="true"] *::before,
       #dsh-live-wallpaper-layer[data-paused="true"] *::after {
         animation-play-state: paused !important;
-      }
-      .dwp-shader-example {
-        background:
-          radial-gradient(circle at 28% 35%, rgba(255, 76, 190, .82), transparent 36%),
-          radial-gradient(circle at 72% 65%, rgba(46, 214, 255, .82), transparent 38%),
-          linear-gradient(135deg, #24115d, #087f8c);
-        background-size: 130% 130%;
-        animation: dwp-shader-example-fallback 7s ease-in-out infinite alternate;
       }
       .dwp-preset-aurora {
         overflow: hidden;
@@ -413,7 +396,6 @@ window.__ModuleLoader__.load({
       @keyframes dwp-water { to { transform: translateY(3%) scaleX(1.04); } }
       @keyframes dwp-grid { to { background-position: 0 35px, 54px 0; } }
       @keyframes dwp-horizon { to { opacity: .62; box-shadow: 0 0 42px 13px rgba(255, 54, 234, .64); } }
-      @keyframes dwp-shader-example-fallback { to { background-position: 100% 100%; filter: hue-rotate(42deg); } }
     `
 
     const PANEL_CSS = `
@@ -695,14 +677,15 @@ window.__ModuleLoader__.load({
           <h3>ShaderToy</h3>
           <div class="source-row">
             <input class="shader-id" type="text" placeholder="Shader ID 或官方链接" aria-label="ShaderToy ID 或链接">
-            <button class="primary apply-shader" type="button">应用</button>
+            <button class="secondary open-shader" type="button">1. 打开</button>
+            <button class="primary capture-shader" type="button">2. 捕获</button>
           </div>
           <p class="hint">作品地址形如 <code>shadertoy.com/view/XXcyRn</code>；<code>/view/</code> 后面的 <code>XXcyRn</code> 就是 ID。可粘贴完整链接，无需手动截取。</p>
           <div class="resource-links">
-            <button class="shader-example" type="button">直接试用示例 XXcyRn</button>
+            <button class="shader-example" type="button">打开示例 XXcyRn</button>
             <a href="https://www.shadertoy.com/view/XXcyRn" target="_blank" rel="noopener noreferrer">查看示例页面</a>
           </div>
-          <p class="hint">示例 XXcyRn 由插件在本地兼容渲染。其他作品通过官方嵌入页播放，可能被 ShaderToy 的站点安全策略阻止；请遵守作品作者标注的许可。</p>
+          <p class="hint">先打开官方播放器，再返回 DSH 点击“2. 捕获”，并在共享选择器中选中刚打开的 ShaderToy 标签页。浏览器要求这两次操作分别由你确认；刷新或重启后需要重新捕获。</p>
 
           <h3>本地文件</h3>
           <label class="file-button">选择视频、GIF 或图片<input class="local-file" type="file" accept="video/*,image/*,.gif"></label>
@@ -766,119 +749,28 @@ window.__ModuleLoader__.load({
         return scene
       }
 
-      function makeShader(id) {
-        const iframe = makeElement('iframe')
-        const paused = motionPaused() ? 'true' : 'false'
-        iframe.src = `https://www.shadertoy.com/embed/${encodeURIComponent(id)}?gui=false&t=10&paused=${paused}&muted=true`
-        iframe.title = `ShaderToy ${id}`
-        iframe.loading = 'eager'
-        iframe.referrerPolicy = 'strict-origin-when-cross-origin'
-        iframe.setAttribute('sandbox', 'allow-scripts allow-pointer-lock')
-        iframe.setAttribute('allow', 'autoplay; fullscreen')
-        return iframe
-      }
+      function makeShaderCapture(source) {
+        const video = makeElement('video')
+        const track = source.stream.getVideoTracks()[0]
+        video.srcObject = source.stream
+        video.autoplay = true
+        video.muted = true
+        video.playsInline = true
 
-      function makeShaderExample() {
-        const canvas = makeElement('canvas', 'dwp-shader-example')
-        const gl = canvas.getContext('webgl', {
-          alpha: false,
-          antialias: false,
-          depth: false,
-          powerPreference: 'low-power',
-        })
-        if (gl === null) return canvas
-
-        function compileShader(type, source) {
-          const shader = gl.createShader(type)
-          if (shader === null) return undefined
-          gl.shaderSource(shader, source)
-          gl.compileShader(shader)
-          if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader
-          gl.deleteShader(shader)
-          return undefined
+        const onEnded = () => {
+          if (currentMedia !== video) return
+          state = { ...state, enabled: false, source: { ...DEFAULT_SOURCE } }
+          commit({ rerender: true })
+          showStatus('ShaderToy 标签页捕获已停止；需要重新选择页面。', 'error')
         }
-
-        const vertexShader = compileShader(gl.VERTEX_SHADER, `
-          attribute vec2 position;
-          void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
-          }
-        `)
-        const fragmentShader = compileShader(gl.FRAGMENT_SHADER, `
-          precision highp float;
-          uniform vec2 resolution;
-          uniform float time;
-          void main() {
-            vec2 uv = gl_FragCoord.xy / resolution.xy;
-            vec3 color = 0.5 + 0.5 * cos(time + vec3(uv.x, uv.y, uv.x) + vec3(0.0, 2.0, 4.0));
-            gl_FragColor = vec4(color, 1.0);
-          }
-        `)
-        if (vertexShader === undefined || fragmentShader === undefined) {
-          if (vertexShader !== undefined) gl.deleteShader(vertexShader)
-          if (fragmentShader !== undefined) gl.deleteShader(fragmentShader)
-          return canvas
+        track?.addEventListener('ended', onEnded, { once: true })
+        video.__dwpDispose = () => {
+          track?.removeEventListener('ended', onEnded)
+          video.pause()
+          video.srcObject = null
+          for (const streamTrack of source.stream.getTracks()) streamTrack.stop()
         }
-
-        const program = gl.createProgram()
-        const buffer = gl.createBuffer()
-        if (program === null || buffer === null) {
-          gl.deleteShader(vertexShader)
-          gl.deleteShader(fragmentShader)
-          if (program !== null) gl.deleteProgram(program)
-          if (buffer !== null) gl.deleteBuffer(buffer)
-          return canvas
-        }
-        gl.attachShader(program, vertexShader)
-        gl.attachShader(program, fragmentShader)
-        gl.linkProgram(program)
-        gl.deleteShader(vertexShader)
-        gl.deleteShader(fragmentShader)
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-          gl.deleteProgram(program)
-          gl.deleteBuffer(buffer)
-          return canvas
-        }
-
-        const position = gl.getAttribLocation(program, 'position')
-        const resolution = gl.getUniformLocation(program, 'resolution')
-        const time = gl.getUniformLocation(program, 'time')
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
-        gl.useProgram(program)
-        gl.enableVertexAttribArray(position)
-        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
-
-        let elapsed = 0
-        let lastFrame
-        let animationFrame
-        const draw = now => {
-          if (!motionPaused()) {
-            if (lastFrame !== undefined) elapsed += Math.min(now - lastFrame, 100) / 1000
-            lastFrame = now
-            const pixelRatio = clamp(globalThis.devicePixelRatio, 1, 2, 1)
-            const width = Math.max(1, Math.round(canvas.clientWidth * pixelRatio))
-            const height = Math.max(1, Math.round(canvas.clientHeight * pixelRatio))
-            if (canvas.width !== width || canvas.height !== height) {
-              canvas.width = width
-              canvas.height = height
-              gl.viewport(0, 0, width, height)
-            }
-            gl.uniform2f(resolution, width, height)
-            gl.uniform1f(time, elapsed)
-            gl.drawArrays(gl.TRIANGLES, 0, 3)
-          } else {
-            lastFrame = undefined
-          }
-          animationFrame = requestAnimationFrame(draw)
-        }
-        animationFrame = requestAnimationFrame(draw)
-        canvas.__dwpDispose = () => {
-          cancelAnimationFrame(animationFrame)
-          gl.deleteProgram(program)
-          gl.deleteBuffer(buffer)
-        }
-        return canvas
+        return video
       }
 
       function makeWebpage(url) {
@@ -897,10 +789,8 @@ window.__ModuleLoader__.load({
         let media
         if (source.type === 'preset') {
           media = makePreset(source.id)
-        } else if (source.type === 'shader-example') {
-          media = makeShaderExample()
-        } else if (source.type === 'shader') {
-          media = makeShader(source.id)
+        } else if (source.type === 'shader-capture') {
+          media = makeShaderCapture(source)
         } else if (source.type === 'video' || source.type === 'local-video') {
           media = makeElement('video')
           media.src = source.url
@@ -930,7 +820,7 @@ window.__ModuleLoader__.load({
         const paused = motionPaused()
         layer.dataset.paused = String(paused)
         if (currentMedia?.tagName === 'VIDEO') {
-          currentMedia.playbackRate = state.speed
+          if (state.source.type !== 'shader-capture') currentMedia.playbackRate = state.speed
           if (paused || !state.enabled) {
             currentMedia.pause()
           } else {
@@ -1010,6 +900,52 @@ window.__ModuleLoader__.load({
         showStatus(message)
       }
 
+      function shaderPlayerUrl(id) {
+        return `https://www.shadertoy.com/embed/${encodeURIComponent(id)}?gui=false&t=10&paused=false&muted=true`
+      }
+
+      function openShaderPlayer(id) {
+        window.open(shaderPlayerUrl(id), '_blank', 'noopener,noreferrer')
+        showStatus(`已打开 ShaderToy ${id}；请返回 DSH，再点击“2. 捕获”。`)
+      }
+
+      function startShaderCapture(id) {
+        if (typeof navigator.mediaDevices?.getDisplayMedia !== 'function') {
+          showStatus('当前浏览器不支持页面捕获，请使用最新版 Chrome、Edge 或 Safari。', 'error')
+          return
+        }
+
+        showStatus(`请选择已打开的 ShaderToy ${id} 标签页。`)
+
+        void navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: 'browser' },
+          audio: false,
+          preferCurrentTab: false,
+          selfBrowserSurface: 'exclude',
+          surfaceSwitching: 'include',
+        }).then(stream => {
+          if (stream.getVideoTracks().length === 0) {
+            for (const track of stream.getTracks()) track.stop()
+            showStatus('没有取得可用的视频画面，请重新选择 ShaderToy 标签页。', 'error')
+            return
+          }
+          setSource(
+            { type: 'shader-capture', id, stream },
+            `正在使用 ShaderToy ${id} 的真实标签页画面；停止共享后壁纸会自动关闭。`,
+          )
+        }).catch(error => {
+          if (error?.name === 'NotAllowedError') {
+            showStatus('未开始捕获：请允许屏幕录制，并在选择器中选择 ShaderToy 标签页。', 'error')
+          } else if (error?.name === 'NotReadableError') {
+            showStatus('系统无法读取所选页面；请检查浏览器的屏幕录制权限。', 'error')
+          } else if (error?.name === 'InvalidStateError') {
+            showStatus('捕获需要由当前 DSH 页面发起；请返回并聚焦 DSH 后重新点击“2. 捕获”。', 'error')
+          } else {
+            showStatus('ShaderToy 页面捕获失败，请重新点击并选择对应标签页。', 'error')
+          }
+        })
+      }
+
       function setPanelOpen(open) {
         panelOpen = open
         panel.hidden = !open
@@ -1020,6 +956,12 @@ window.__ModuleLoader__.load({
       launcher.addEventListener('click', () => setPanelOpen(!panelOpen))
       $('.close').addEventListener('click', () => setPanelOpen(false))
       $('.enabled').addEventListener('change', event => {
+        if (!event.currentTarget.checked && state.source.type === 'shader-capture') {
+          state = { ...state, enabled: false, source: { ...DEFAULT_SOURCE } }
+          commit({ rerender: true })
+          showStatus('ShaderToy 标签页捕获已停止。')
+          return
+        }
         state = { ...state, enabled: event.currentTarget.checked }
         commit()
         showStatus(state.enabled ? '壁纸已启用。' : '壁纸已暂停显示。')
@@ -1079,18 +1021,26 @@ window.__ModuleLoader__.load({
         const type = $('.remote-type').value
         setSource({ type, url }, '远程壁纸已应用。')
       })
-      $('.apply-shader').addEventListener('click', () => {
+      $('.open-shader').addEventListener('click', () => {
         const id = parseShaderId($('.shader-id').value)
         if (id === undefined) {
           showStatus('请输入有效的 ShaderToy ID 或官方链接。', 'error')
           return
         }
-        setSource({ type: 'shader', id }, `已请求加载 ShaderToy ${id}；若画面空白，可能是站点禁止跨页嵌入。`)
+        openShaderPlayer(id)
+      })
+      $('.capture-shader').addEventListener('click', () => {
+        const id = parseShaderId($('.shader-id').value)
+        if (id === undefined) {
+          showStatus('请输入有效的 ShaderToy ID 或官方链接。', 'error')
+          return
+        }
+        startShaderCapture(id)
       })
       $('.shader-example').addEventListener('click', () => {
-        const id = SHADER_EXAMPLE_ID
+        const id = 'XXcyRn'
         $('.shader-id').value = id
-        setSource({ type: 'shader-example', id }, `ShaderToy 示例 ${id} 已通过本地兼容渲染应用。`)
+        openShaderPlayer(id)
       })
       $('.local-file').addEventListener('change', event => {
         const file = event.currentTarget.files?.[0]
@@ -1120,7 +1070,7 @@ window.__ModuleLoader__.load({
       })
       $('.respect-motion').addEventListener('change', event => {
         state = { ...state, respectMotion: event.currentTarget.checked }
-        commit({ rerender: state.source.type === 'shader' })
+        commit()
       })
       $('.reset').addEventListener('click', () => {
         state = normalizeState(DEFAULT_STATE)
@@ -1131,10 +1081,7 @@ window.__ModuleLoader__.load({
       })
 
       const onVisibilityChange = () => syncPlayback()
-      const onReducedMotionChange = () => {
-        if (state.source.type === 'shader') renderSource()
-        syncPlayback()
-      }
+      const onReducedMotionChange = () => syncPlayback()
       const onKeyDown = event => {
         if (event.key === 'Escape' && panelOpen) setPanelOpen(false)
       }

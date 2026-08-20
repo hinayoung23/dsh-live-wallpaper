@@ -11,7 +11,7 @@
 ### 功能
 
 - 四款离线程序化动态壁纸：极光、星云、落日流光、霓虹网格
-- 通过 ShaderToy ID 或官方链接嵌入公开 Shader
+- 通过 ShaderToy ID 或官方链接打开原始播放器，并在用户授权后将对应标签页捕获为壁纸
 - 应用 HTTP(S) 视频、图片或网页 URL
 - 临时应用本地视频、GIF 和图片
 - 调整背景暗度、模糊、界面遮罩透明度和视频速度
@@ -35,7 +35,7 @@ dsh web
 ### 从 GitHub 安装
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.2
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.3
 ```
 
 ### 从 npm 安装
@@ -56,16 +56,16 @@ dsh plugin --profile web add dsh-live-wallpaper
 
 使用 ShaderToy：
 
-1. 可以先点击插件面板中的“直接试用示例 XXcyRn”；该示例由插件在本地兼容渲染，不依赖跨站嵌入。
-2. 自己寻找作品时，打开 ShaderToy 的作品页面，地址形如 `https://www.shadertoy.com/view/XXcyRn`。
-3. `/view/` 后面的 `XXcyRn` 就是 Shader ID；也可以把完整作品链接直接粘贴到插件中，无需手动提取。
-4. 其他 ShaderToy 作品仍通过官方嵌入页播放。如果站点安全策略阻止跨页嵌入，请使用本地示例、内置动态壁纸，或下载视频后通过本地文件应用。
+1. 可以点击“打开示例 XXcyRn”；也可以粘贴其他 ShaderToy ID 或官方作品链接后点击“1. 打开”。
+2. 官方播放器打开后，返回 DSH，点击“2. 捕获”。
+3. 在浏览器共享选择器中选中刚打开的 ShaderToy 标签页，而不是当前 DSH 标签页。
+4. 打开标签页和开始捕获都需要独立的用户操作，这是浏览器的安全要求。停止共享、刷新页面或重启 DSH 后需要重新捕获。
 
 “视频 / 图片 URL”要求媒体直链，即在浏览器中打开后直接显示视频或图片；Pexels、Pixabay 等素材详情页不能作为媒体直链使用。
 
 ### 来源与安全
 
-- 示例 XXcyRn 使用插件内置的本地兼容渲染；其他 ShaderToy ID 使用官方 `shadertoy.com/embed/<id>` 页面。插件不会绕过访问控制，也不会下载 Shader 源码。
+- ShaderToy 当前通过 `X-Frame-Options: SAMEORIGIN` 禁止第三方 iframe。插件不会绕过该限制或下载作者源码，而是打开官方播放器，并仅在用户通过浏览器选择器明确授权后捕获该标签页。
 - 远程网页在不带 `allow-same-origin` 的 sandbox iframe 中运行；壁纸层默认不接收鼠标事件。
 - 插件不会抓取、代理或绕过任何第三方壁纸市场的访问控制。
 - 使用第三方视频、图片或 Shader 前，请确认其授权允许你的使用方式。
@@ -74,8 +74,8 @@ dsh plugin --profile web add dsh-live-wallpaper
 
 - 浏览器不能在刷新后重新取得本地文件权限，因此本地文件壁纸仅在当前页面生命周期内有效。
 - 远程服务器可能禁止跨站嵌入或热链；这时请下载文件后通过“本地文件”使用。
-- ShaderToy 可能通过 Cloudflare 或 `X-Frame-Options` 阻止第三方页面嵌入；本地示例 XXcyRn 不受影响。
-- ShaderToy 的可用性受网络、浏览器 WebGL 能力和作品自身许可约束。
+- ShaderToy 标签页捕获仅在当前页面生命周期内有效，刷新或重启后需要重新选择。
+- 首次使用时，系统可能要求为浏览器开启“屏幕录制”权限；ShaderToy 的可用性仍受网络、WebGL 能力和作品自身许可约束。
 
 ### 开发验证
 
@@ -97,7 +97,7 @@ The current version has been verified with DeepSeek Harness `0.1.0-rc.7`.
 ### Features
 
 - Four offline procedural animated wallpapers: Aurora, Nebula, Sunset Flow, and Neon Grid
-- Embed public shaders using a ShaderToy ID or official ShaderToy URL
+- Open the original ShaderToy player from an ID or official URL and capture that tab as the wallpaper after user approval
 - Use HTTP(S) video, image, or web page URLs as wallpapers
 - Temporarily apply local videos, GIFs, and images
 - Adjust background dimming, blur, UI overlay opacity, and video playback speed
@@ -121,7 +121,7 @@ After opening DSH, click the round wallpaper button in the lower-right corner.
 ### Install from GitHub
 
 ```sh
-dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.2
+dsh plugin --profile web add github:hinayoung23/dsh-live-wallpaper#v0.2.3
 ```
 
 ### Install from npm
@@ -142,16 +142,16 @@ To use a downloaded video:
 
 To use ShaderToy:
 
-1. Start with the Try Example XXcyRn button in the plugin panel. The plugin renders this example locally, without relying on cross-site embedding.
-2. To use another shader, open its ShaderToy page. Its address will look like `https://www.shadertoy.com/view/XXcyRn`.
-3. The value after `/view/`—`XXcyRn` in this example—is the Shader ID. You can also paste the complete page URL into the plugin without extracting the ID yourself.
-4. Other ShaderToy works still use the official embed page. If the site's security policy blocks cross-page embedding, use the local example, a built-in animation, or a downloaded video as a local file.
+1. Click Open Example XXcyRn, or paste another ShaderToy ID or official work URL and click 1. Open.
+2. After the official player opens, return to DSH and click 2. Capture.
+3. In the browser sharing picker, select the newly opened ShaderToy tab—not the current DSH tab.
+4. Opening a tab and starting capture require separate user actions under browser security rules. Capture must be selected again after sharing stops, a refresh, or a DSH restart.
 
 The Video / Image URL field requires a direct media URL—one that opens the video or image itself in a browser. Pexels and Pixabay asset detail pages are not direct media URLs.
 
 ### Sources and Security
 
-- Example XXcyRn uses the plugin's bundled local compatibility renderer; other ShaderToy IDs use the official `shadertoy.com/embed/<id>` page. The plugin does not bypass access controls or download shader source code.
+- ShaderToy currently blocks third-party iframes with `X-Frame-Options: SAMEORIGIN`. The plugin does not bypass that policy or download authors' source code. It opens the official player and captures the tab only after explicit approval in the browser picker.
 - Remote pages run inside a sandboxed iframe without `allow-same-origin`; the wallpaper layer does not receive pointer events by default.
 - The plugin does not scrape, proxy, or bypass access controls for any third-party wallpaper marketplace.
 - Before using third-party videos, images, or shaders, confirm that their licenses permit your intended use.
@@ -160,8 +160,8 @@ The Video / Image URL field requires a direct media URL—one that opens the vid
 
 - Browsers cannot recover local file permissions after a page reload, so local-file wallpapers remain available only for the current page lifecycle.
 - Remote servers may block cross-origin embedding or hotlinking. In that case, download the file and use the Local File option.
-- ShaderToy may block third-party embedding through Cloudflare or `X-Frame-Options`; the local XXcyRn example is unaffected.
-- ShaderToy availability depends on the network connection, browser WebGL support, and the license of each shader.
+- ShaderToy tab capture lasts only for the current page lifecycle and must be selected again after a refresh or restart.
+- The operating system may request Screen Recording permission for the browser. ShaderToy availability still depends on network access, WebGL support, and each work's license.
 
 ### Development Verification
 
